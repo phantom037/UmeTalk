@@ -36,10 +36,10 @@ Break the ice with people nearby or around the world. Unlike some other apps, me
 - [x] Create account and reset password system
 - [x] Search user and send chat
 - [x] Send image file
-- [o] Decrease latency on chat on iOS device (In Progress)
-- [o] Delete user (In Progress)
-- [] Send voice and video
-- [] Create group chat
+- [ ] Decrease latency on chat on iOS device (In Progress)
+- [ ] Delete user (In Progress)
+- [ ] Send voice and video
+- [ ] Create group chat
 
 
 
