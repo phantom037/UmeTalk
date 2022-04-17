@@ -32,14 +32,14 @@ Break the ice with people nearby or around the world. Unlike some other apps, me
 
 <!-- ROADMAP -->
 ## Roadmap
-- [v] Log In/Out system (with Google SignIn, Apple SignIn, Email Log In)
-- [v] Create account and reset password system
-- [v] Search user and send chat
-- [v] Send image file
+- [x] Log In/Out system (with Google SignIn, Apple SignIn, Email Log In)
+- [x] Create account and reset password system
+- [x] Search user and send chat
+- [x] Send image file
 - [o] Decrease latency on chat on iOS device (In Progress)
 - [o] Delete user (In Progress)
-- [x] Send voice and video
-- [x] Create group chat
+- [] Send voice and video
+- [] Create group chat
 
 
 
