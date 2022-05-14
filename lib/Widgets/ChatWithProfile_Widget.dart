@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ume_talk/Models/notification.dart';
 import 'package:ume_talk/Models/screenTransition.dart';
-import 'package:ume_talk/Models/themeColor.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ume_talk/Screen/Chat_Screen.dart';
 
 class ProfileChatWith extends StatefulWidget {
@@ -27,6 +25,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
   String profileName = "Loading";
   String latestMessage = "Get Start";
   String profileAbout = "Loading";
+  String diff = "loading";
 
   ///Unused consider delete all relevant
   bool lastMessageSentFromCurrentUserId = true;
@@ -120,8 +119,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                 }
               })
             });
-
-    //print("User read: $userRead");
+    //print("MediaQuery.of(context).size.width: ${MediaQuery.of(context).size.width}");
   }
 
   checkReadMessage() async {
@@ -152,6 +150,27 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container();
+          }
+          try {
+            //String temp = DateFormat("dd MMMM, yyyy hh:mm aa").format(DateTime.parse(snapshot.data?.docs.first["time"]).toLocal());
+            DateTime messageTime =
+                DateTime.parse(snapshot.data?.docs.first["time"]).toLocal();
+            DateTime currentTime = DateTime.now().toLocal();
+            Duration timeDiff = currentTime.difference(messageTime);
+
+            if (timeDiff.inDays > 0) {
+              diff = timeDiff.inDays.toString() + "d";
+            } else if (timeDiff.inHours > 0) {
+              diff = timeDiff.inHours.toString() + "h";
+            } else if (timeDiff.inMinutes > 0) {
+              diff = timeDiff.inMinutes.toString() + "m";
+            } else if (timeDiff.inSeconds > 0) {
+              diff = "now";
+            } else {
+              diff = " ";
+            }
+          } on Exception catch (e) {
+            print("loading time");
           }
           if (snapshot.hasData) {
             //final chatWithSnapshot = snapshot.data?.docs.first['chatWith'];
@@ -196,17 +215,30 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                 }
               }
             }
+          } else {
+            return Container();
           }
-          return Text(
-            latestMessage,
-            style: userRead
-                ? TextStyle(color: Colors.grey, fontSize: 15.0)
-                : TextStyle(
-                    color: Colors.black,
-                    fontSize: 15.0,
-                    fontWeight: FontWeight.bold),
-            textAlign: TextAlign.start,
-          );
+          return Row(children: <Widget>[
+            Container(
+              width: MediaQuery.of(context).size.width > 400
+                  ? MediaQuery.of(context).size.width / 1.7
+                  : MediaQuery.of(context).size.width / 1.9,
+              child: Text(
+                latestMessage,
+                style: userRead
+                    ? const TextStyle(color: Colors.grey, fontSize: 15.0)
+                    : const TextStyle(
+                        color: Colors.black,
+                        fontSize: 15.0,
+                        fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Text(
+              diff,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ]);
         });
   }
 
@@ -241,7 +273,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
           }));
         },
         child: Padding(
-          padding: EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(12.0),
           child: Container(
             width: MediaQuery.of(context).size.width,
             child: Row(
@@ -250,7 +282,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                   child: CachedNetworkImage(
                     imageUrl: (profileImgUrl != null)
                         ? profileImgUrl.toString()
-                        : "https://media.istockphoto.com/vectors/default-profile-picture-avatar-photo-placeholder-vector-illustration-vector-id1214428300?k=20&m=1214428300&s=170667a&w=0&h=NPyJe8rXdOnLZDSSCdLvLWOtIeC9HjbWFIx8wg5nIks=",
+                        : "https://dlmocha.com/app/Ume-Talk/userDefaultAvatar.jpeg",
                     placeholder: (context, url) =>
                         new CircularProgressIndicator(),
                     errorWidget: (context, url, error) => new Icon(Icons.error),
@@ -258,10 +290,10 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                     height: 60.0,
                     fit: BoxFit.cover,
                   ),
-                  borderRadius: BorderRadius.all(Radius.circular(125.0)),
+                  borderRadius: const BorderRadius.all(Radius.circular(125.0)),
                   clipBehavior: Clip.hardEdge,
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 15.0,
                 ),
                 Column(
@@ -272,7 +304,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                         profileName.toString() != null
                             ? profileName.toString()
                             : "Loading",
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.black,
                           fontSize: 15.0,
                           fontWeight: FontWeight.w400,
@@ -280,18 +312,18 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                         textAlign: TextAlign.start,
                       ),
                       /*
-                        Text(
-                          latestMessage,
-                          style: userRead
-                              ? TextStyle(color: Colors.grey, fontSize: 15.0)
-                              : TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.start,
-                        ),
+                          Text(
+                            latestMessage,
+                            style: userRead
+                                ? TextStyle(color: Colors.grey, fontSize: 15.0)
+                                : TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 15.0,
+                                    fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.start,
+                          ),
 
-                         */
+                           */
                       generateLatestMessage(),
                     ]),
               ],
