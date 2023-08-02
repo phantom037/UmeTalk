@@ -5,15 +5,15 @@ admin.initializeApp()
 exports.sendNotification = functions.firestore
   .document('messages/{groupId1}/{groupId2}/{message}')
   .onCreate((snap, context) => {
-    console.log('----------------start function--------------------')
 
+    console.log('----------------start function--------------------')
     const doc = snap.data()
     console.log(doc)
 
     const idFrom = doc.idFrom
     const idTo = doc.idTo
     const contentMessage = doc.content
-    console.log(`Send from : ${idFrom}`)
+    //console.log(`Send from : ${idFrom}`)
 
     // Get push token user to (receive)
     admin

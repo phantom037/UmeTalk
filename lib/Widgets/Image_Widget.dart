@@ -1,20 +1,21 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:dio/dio.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:ume_talk/Models/themeColor.dart';
 import 'package:ume_talk/Widgets/Progress_Widget.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class FullPhoto extends StatelessWidget {
   final String url;
-  FullPhoto({Key? key, required this.url}) : super(key: key);
+  final bool darkMode;
+  FullPhoto({Key? key, required this.url, required this.darkMode}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.greenAccent,
+        backgroundColor: themeColor,
         iconTheme: IconThemeData(color: Colors.black),
         title: Container(
           alignment: Alignment.topRight,
@@ -26,7 +27,7 @@ class FullPhoto extends StatelessWidget {
           ),
         ),
       ),
-      body: FullPhotoScreen(url: url),
+      body: FullPhotoScreen(url: url, darkMode: darkMode,),
     );
   }
 
@@ -46,14 +47,16 @@ class FullPhoto extends StatelessWidget {
 
 class FullPhotoScreen extends StatefulWidget {
   final String url;
-  FullPhotoScreen({Key? key, required this.url}) : super(key: key);
+  final bool darkMode;
+  FullPhotoScreen({Key? key, required this.url, required this.darkMode}) : super(key: key);
   @override
-  State createState() => FullPhotoScreenState(url: url);
+  State createState() => FullPhotoScreenState(url: url, darkMode: darkMode);
 }
 
 class FullPhotoScreenState extends State<FullPhotoScreen> {
   final String url;
-  FullPhotoScreenState({Key? key, required this.url});
+  final bool darkMode;
+  FullPhotoScreenState({Key? key, required this.url, required this.darkMode});
   @override
   void initState() {
     super.initState();
@@ -62,12 +65,13 @@ class FullPhotoScreenState extends State<FullPhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: darkMode ? Colors.black : backgroundColor,
       child: PhotoView(
+        backgroundDecoration: BoxDecoration(color: darkMode ? Colors.black : backgroundColor),
         loadingBuilder: (context, progress) => Center(
           child: Container(
-            width: 20.0,
-            height: 20.0,
+            width: 200.0,
+            height: 50.0,
             child: linearProgress(),
           ),
         ),

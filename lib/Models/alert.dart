@@ -6,23 +6,27 @@ Widget showAlert(errorMessage) {
     return Container(
       color: Colors.transparent,
       width: double.infinity,
-      padding: EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
       child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child:
-                  errorMessage == "" ? Container() : Icon(Icons.error_outline),
+              child: errorMessage == ""
+                  ? Container()
+                  : Icon(
+                      Icons.error_outline,
+                      color: Colors.redAccent,
+                    ),
             ),
 
             Expanded(
               child: Text(
                 errorMessage,
-                style: TextStyle(
-                  color: Colors.yellowAccent,
-                  fontSize: 12.0,
+                style: const TextStyle(
+                  color: Colors.black54,
+                  fontSize: 15.0,
                 ),
               ),
             ),
@@ -30,7 +34,7 @@ Widget showAlert(errorMessage) {
           ]),
     ); //Container
   }
-  return SizedBox(
+  return const SizedBox(
     height: 0,
   );
 }

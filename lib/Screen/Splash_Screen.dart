@@ -1,42 +1,28 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:animated_splash_screen/animated_splash_screen.dart';
+import 'package:ume_talk/Models/keepLogIn.dart';
+import 'package:page_transition/page_transition.dart';
+import 'package:lottie/lottie.dart';
+import '../Models/themeColor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class SplashScreen extends StatefulWidget {
-  final String currentUserId;
-  SplashScreen({Key? key, required this.currentUserId}) : super(key: key);
+class SplashScreen extends StatelessWidget {
+  final bool acceptPolicy;
+  const SplashScreen({Key? key, required this.acceptPolicy}) : super(key: key);
 
-  @override
-  _SplashScreenState createState() =>
-      _SplashScreenState(currentUserId: currentUserId);
-}
+  //late SharedPreferences prefs;
 
-class _SplashScreenState extends State<SplashScreen> {
-  final String currentUserId;
-  _SplashScreenState({Key? key, required this.currentUserId});
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}
-
-class Splash extends StatelessWidget {
-  //const Splash({Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    bool lightMode =
-        MediaQuery.of(context).platformBrightness == Brightness.light;
-    return Scaffold(
-      backgroundColor: lightMode
-          ? const Color(0xff55efc4).withOpacity(1.0)
-          : const Color(0x00042a49).withOpacity(1.0),
-      body: Center(
-          child: SizedBox(
-              width: 100.0,
-              height: 100.0,
-              child: lightMode
-                  ? Image.asset('images/lottie.PNG')
-                  : Image.asset('images/lottie.PNG'))),
+    return AnimatedSplashScreen(
+      splash: Lottie.asset('images/splashScreen.json'),
+      splashIconSize: 250,
+      //duration: 3000,
+      backgroundColor: backgroundColor,
+      pageTransitionType: PageTransitionType.topToBottom,
+      nextScreen: KeepLogin(acceptPolicy: acceptPolicy,),
     );
   }
 }

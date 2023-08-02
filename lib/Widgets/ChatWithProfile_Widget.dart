@@ -1,32 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:ume_talk/Models/notification.dart';
 import 'package:ume_talk/Models/screenTransition.dart';
-import 'package:ume_talk/Models/themeColor.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ume_talk/Models/themeColor.dart';
 import 'package:ume_talk/Screen/Chat_Screen.dart';
 
 class ProfileChatWith extends StatefulWidget {
-  final String userId;
+  final String chattedUserId;
   final String currentUserId;
-  ProfileChatWith({Key? key, required this.userId, required this.currentUserId})
+  bool darkMode;
+  ProfileChatWith(
+      {Key? key, required this.chattedUserId, required this.currentUserId, required this.darkMode})
       : super(key: key);
 
   @override
   _ProfileChatWithState createState() =>
-      _ProfileChatWithState(id: userId, currentUserId: currentUserId);
+      _ProfileChatWithState(id: chattedUserId, currentUserId: currentUserId, darkMode: darkMode);
 }
 
 class _ProfileChatWithState extends State<ProfileChatWith> {
   String id, currentUserId;
-  _ProfileChatWithState({required this.id, required this.currentUserId});
+  bool darkMode;
+  _ProfileChatWithState({required this.id, required this.currentUserId, required this.darkMode});
   var userData;
   String? profileImgUrl, chatID;
   String profileName = "Loading";
   String latestMessage = "Get Start";
   String profileAbout = "Loading";
+  String diff = "loading";
 
   ///Unused consider delete all relevant
   bool lastMessageSentFromCurrentUserId = true;
@@ -38,24 +40,7 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
     readLocal();
     super.initState();
     getUserData();
-
-    ///Notification
-    //NotificationAPI.init();
-    //listenNotifications();
   }
-
-  void listenNotifications() =>
-      NotificationAPI.onNotification.stream.listen(onClickedNotification);
-
-  void onClickedNotification(String? payload) =>
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (context) => Chat(
-          receiverId: id,
-          receiverName: profileName.toString(),
-          receiverProfileImg: profileImgUrl.toString(),
-          receiverAbout: profileAbout.toString(),
-        ),
-      ));
 
   readLocal() async {
     if (currentUserId.hashCode <= id.hashCode) {
@@ -120,8 +105,6 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                 }
               })
             });
-
-    //print("User read: $userRead");
   }
 
   checkReadMessage() async {
@@ -140,7 +123,6 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
 
   generateLatestMessage() {
     checkReadMessage();
-    //print("User $currentUserId read: $userRead");
     return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection("messages")
@@ -152,6 +134,27 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container();
+          }
+          try {
+            //String temp = DateFormat("dd MMMM, yyyy hh:mm aa").format(DateTime.parse(snapshot.data?.docs.first["time"]).toLocal());
+            DateTime messageTime =
+                DateTime.parse(snapshot.data?.docs.first["time"]).toLocal();
+            DateTime currentTime = DateTime.now().toLocal();
+            Duration timeDiff = currentTime.difference(messageTime);
+
+            if (timeDiff.inDays > 0) {
+              diff = timeDiff.inDays.toString() + "d";
+            } else if (timeDiff.inHours > 0) {
+              diff = timeDiff.inHours.toString() + "h";
+            } else if (timeDiff.inMinutes > 0) {
+              diff = timeDiff.inMinutes.toString() + "m";
+            } else if (timeDiff.inSeconds > 0) {
+              diff = "now";
+            } else {
+              diff = " ";
+            }
+          } on Exception catch (e) {
+            print("");
           }
           if (snapshot.hasData) {
             //final chatWithSnapshot = snapshot.data?.docs.first['chatWith'];
@@ -196,17 +199,30 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                 }
               }
             }
+          } else {
+            return Container();
           }
-          return Text(
-            latestMessage,
-            style: userRead
-                ? TextStyle(color: Colors.grey, fontSize: 15.0)
-                : TextStyle(
-                    color: Colors.black,
-                    fontSize: 15.0,
-                    fontWeight: FontWeight.bold),
-            textAlign: TextAlign.start,
-          );
+          return Row(children: <Widget>[
+            Container(
+              width: MediaQuery.of(context).size.width > 400
+                  ? MediaQuery.of(context).size.width / 1.7
+                  : MediaQuery.of(context).size.width / 1.9,
+              child: Text(
+                latestMessage,
+                style: userRead
+                    ? const TextStyle(color: Colors.grey, fontSize: 15.0)
+                    : TextStyle(
+                        color: darkMode ? subThemeColor : Colors.black,
+                        fontSize: 15.0,
+                        fontWeight: FontWeight.bold),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            Text(
+              diff,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ]);
         });
   }
 
@@ -221,27 +237,25 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
       profileImgUrl = userData["photoUrl"];
       profileAbout = userData["about"];
     });
-    //print("Name: $profileName");
-    //print("Img: $profileImgUrl");
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      child: FlatButton(
+      child: TextButton(
         onPressed: () {
           Navigator.push(context, MyRoute(builder: (context) {
             return Chat(
               receiverId: id,
               receiverName: profileName.toString(),
               receiverProfileImg: profileImgUrl.toString(),
-              receiverAbout: profileAbout.toString(),
+              receiverAbout: profileAbout.toString()
             );
           }));
         },
         child: Padding(
-          padding: EdgeInsets.all(12.0),
+          padding: const EdgeInsets.only(left: 12.0, right: 12.0),
           child: Container(
             width: MediaQuery.of(context).size.width,
             child: Row(
@@ -250,18 +264,18 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                   child: CachedNetworkImage(
                     imageUrl: (profileImgUrl != null)
                         ? profileImgUrl.toString()
-                        : "https://media.istockphoto.com/vectors/default-profile-picture-avatar-photo-placeholder-vector-illustration-vector-id1214428300?k=20&m=1214428300&s=170667a&w=0&h=NPyJe8rXdOnLZDSSCdLvLWOtIeC9HjbWFIx8wg5nIks=",
+                        : "https://dlmocha.com/app/Ume-Talk/userDefaultAvatar.jpeg",
                     placeholder: (context, url) =>
-                        new CircularProgressIndicator(),
+                        const CircularProgressIndicator(),
                     errorWidget: (context, url, error) => new Icon(Icons.error),
                     width: 60.0,
                     height: 60.0,
                     fit: BoxFit.cover,
                   ),
-                  borderRadius: BorderRadius.all(Radius.circular(125.0)),
+                  borderRadius: const BorderRadius.all(Radius.circular(125.0)),
                   clipBehavior: Clip.hardEdge,
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 15.0,
                 ),
                 Column(
@@ -273,25 +287,12 @@ class _ProfileChatWithState extends State<ProfileChatWith> {
                             ? profileName.toString()
                             : "Loading",
                         style: TextStyle(
-                          color: Colors.black,
+                          color: darkMode ? Colors.white : Colors.black,
                           fontSize: 15.0,
                           fontWeight: FontWeight.w400,
                         ),
                         textAlign: TextAlign.start,
                       ),
-                      /*
-                        Text(
-                          latestMessage,
-                          style: userRead
-                              ? TextStyle(color: Colors.grey, fontSize: 15.0)
-                              : TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.start,
-                        ),
-
-                         */
                       generateLatestMessage(),
                     ]),
               ],

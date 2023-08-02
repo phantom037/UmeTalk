@@ -11,10 +11,12 @@ import 'package:ume_talk/Screen/ResetPassword_Screen.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ume_talk/Widgets/Progress_Widget.dart';
 import 'package:ume_talk/Models/themeColor.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../Widgets/Progress_Widget.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -29,6 +31,8 @@ class LoginScreenState extends State<LoginScreen> {
   bool isLoggedIn = false;
   bool showSpin = false;
   String email = "", password = "", errorMessage = "";
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode passwordFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -53,238 +57,294 @@ class LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    //var textSize = MediaQuery.of(context).textScaleFactor;
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [themeColor, subThemeColor]),
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 10.0),
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Center(
-                child: Image.asset(
-              "images/logo.png",
-              width: 120,
-              height: 40,
-            )
-
-/*
-                  Text(
-                "Ume Talk",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 30.0 / textSize,
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic),
-              ),
-
- */
-                ),
-            SizedBox(
-              height: 10.0,
-            ),
-            TextField(
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.emailAddress,
-              onChanged: (value) {
-                email = value;
-              },
-              decoration: InputDecoration(
-                hintText: "Enter your email",
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 1.0),
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 2.0),
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 10.0,
-            ),
-            TextField(
-              textAlign: TextAlign.center,
-              obscureText: true,
-              onChanged: (value) {
-                password = value;
-              },
-              decoration: InputDecoration(
-                hintText: "Enter your password",
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 1.0),
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 2.0),
-                  borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 20.0,
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 10.0),
-              child: Material(
-                color: Colors.greenAccent,
-                borderRadius: BorderRadius.all(Radius.circular(30.0)),
-                elevation: 5.0,
-                child: MaterialButton(
-                  onPressed: normalControlSignIn,
-                  minWidth: 200.0,
-                  height: 42.0,
-                  child: Text(
-                    'Sign In',
-                    style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18.0),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 10.0),
-              child: Material(
-                color: Colors.greenAccent,
-                borderRadius: BorderRadius.all(Radius.circular(30.0)),
-                elevation: 5.0,
-                child: MaterialButton(
-                  onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      return RegistrationScreen();
-                    }));
-                  },
-                  minWidth: 200.0,
-                  height: 42.0,
-                  child: Text(
-                    'Register',
-                    style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18.0),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 15.0),
-
-            ///For Android version only
-            /*
-            GestureDetector(
-              child: Center(
-                child: Container(
-                  width: 270.0,
-                  height: 65.0,
-                  decoration: BoxDecoration(
-                      image: DecorationImage(
-                          image:
-                              AssetImage('images/google_signin_button.png'))),
-                ),
-              ),
-              onTap: googleControlSignIn,
-            ),
-             */
-
-            Center(
-              child: Text(
-                "Or",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic),
-              ),
-            ),
-            Row(
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: Container(
+            color: backgroundColor,
+            padding: const EdgeInsets.symmetric(horizontal: 25.0),
+            alignment: Alignment.center,
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                Center(
+                    child: showSpin
+                        ? Padding(
+                            padding: EdgeInsets.all(1.0),
+                            child: circularProgress(),
+                          )
+                        : Image.asset(
+                            "images/logo.png",
+                            width: 120,
+                            height: 40,
+                          )),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                TextField(
+                  textAlign: TextAlign.start,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (value) {
+                    email = value;
+                  },
+                  focusNode: emailFocusNode,
+                  decoration: const InputDecoration(
+                    hintText: "Email",
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10.0, horizontal: 20.0),
+                    border: const OutlineInputBorder(
+                      borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    ),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide:
+                          const BorderSide(color: Colors.black38, width: 1.0),
+                      borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide:
+                          const BorderSide(color: Colors.black45, width: 2.0),
+                      borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                TextField(
+                  textAlign: TextAlign.start,
+                  obscureText: true,
+                  onChanged: (value) {
+                    password = value;
+                  },
+                  focusNode: passwordFocusNode,
+                  decoration: const InputDecoration(
+                    hintText: "Password",
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10.0, horizontal: 20.0),
+                    border: const OutlineInputBorder(
+                      borderRadius: const BorderRadius.all(Radius.circular(32.0)),
+                    ),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide:
+                          const BorderSide(color: Colors.black38, width: 1.0),
+                      borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide:
+                          const BorderSide(color: Colors.black45, width: 2.0),
+                      borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                Container(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                      child: const Text(
+                        "Forgot password",
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return ResetPasswordScreen();
+                        }));
+                      }),
+                ),
+                Center(child: showAlert(errorMessage)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Material(
+                    borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    elevation: 5.0,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: buttonColor,
+                        borderRadius: BorderRadius.circular(19.0),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(19.0),
+                        onTap: normalControlSignIn,
+                        child: Container(
+                          width: 200.0,
+                          height: 50.0,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Material(
+                    borderRadius: const BorderRadius.all(Radius.circular(19.0)),
+                    elevation: 5.0,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: buttonColor,
+                        borderRadius: BorderRadius.circular(19.0),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(19.0),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) {
+                            return RegistrationScreen();
+                          }));
+                        },
+                        child: Container(
+                          width: 200.0,
+                          height: 50.0,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Create',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+
+                /*
+                ///Todo : Uncomment method below for android devices
+
                 GestureDetector(
                   child: Center(
                     child: Container(
-                      width: 50.0,
-                      height: 50.0,
+                      width: 270.0,
+                      height: 65.0,
                       decoration: BoxDecoration(
-                          borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                          color: Colors.white,
                           image: DecorationImage(
-                              image: AssetImage('images/google.png'))),
+                              image:
+                                  AssetImage('images/google_signin_button.png'))),
                     ),
                   ),
                   onTap: googleControlSignIn,
                 ),
-                SizedBox(
-                  width: 30,
+                */
+
+
+                ///Todo : Uncomment method below for iOS devices
+                const SizedBox(
+                  height: 15.0,
                 ),
-                GestureDetector(
-                  child: Center(
-                    child: Container(
-                      width: 50.0,
-                      height: 50.0,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                          color: Colors.black,
-                          image: DecorationImage(
-                            image: AssetImage('images/apple.png'),
-                          )),
-                    ),
+                const Center(
+                  child: const Text(
+                    "Continue with",
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        fontStyle: FontStyle.italic),
                   ),
-                  onTap: appleControlSignIn,
                 ),
+                SizedBox(height: 15.0),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    GestureDetector(
+                      child: Center(
+                        child: Container(
+                          width: 50.0,
+                          height: 50.0,
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(5.0)),
+                              color: Colors.white,
+                              image: DecorationImage(
+                                  image: AssetImage('images/google.png'))),
+                        ),
+                      ),
+                      onTap: googleControlSignIn,
+                    ),
+                    const SizedBox(
+                      width: 30,
+                    ),
+                    GestureDetector(
+                      child: Center(
+                        child: Container(
+                          width: 50.0,
+                          height: 50.0,
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(5.0)),
+                              color: Colors.black,
+                              image: DecorationImage(
+                                image: AssetImage('images/apple.png'),
+                              )),
+                        ),
+                      ),
+                      onTap: appleControlSignIn,
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 20.0,
+                ),
+
+
+                ///Todo add circular progress process login
+                /*
+                Padding(
+                  padding: EdgeInsets.all(1.0),
+                  child: showSpin ? circularProgress() : Container(),
+                ),
+                 */
               ],
             ),
-            SizedBox(
-              height: 8.0,
-            ),
-
-            Center(child: showAlert(errorMessage)),
-            Container(
-              alignment: Alignment.center,
-              child: GestureDetector(
-                  child: Text(
-                    "Forgot your password?",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14.0,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      return ResetPasswordScreen();
-                    }));
-                  }),
-            ),
-            /*
-            Padding(
-              padding: EdgeInsets.all(1.0),
-              child: showSpin ? circularProgress() : Container(),
-            ),
-
-             */
-          ],
         ),
-      ),
+          ),
+          Positioned(
+              left: 0,
+              right: 0,
+              bottom: 20,
+              child: Container(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const Text("By continue you agree with", style: TextStyle(fontSize: 12, color: Colors.black45),),
+                    const SizedBox(
+                      width: 3,
+                    ),
+                    Container(
+                      alignment: Alignment.topLeft,
+                      child: GestureDetector(
+                          child: const Text(
+                            "terms & condition",
+                            style: TextStyle(
+                              color: Colors.black45,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          onTap: () {
+                            launch("https://dlmocha.com/app/UmeTalk-privacy");
+                          }),
+                    ),
+                  ],),
+              ))
+      ]),
     );
   }
 
@@ -322,36 +382,32 @@ class LoginScreenState extends State<LoginScreen> {
     try {
       final rawNonce = generateNonce();
       final nonce = sha256ofString(rawNonce);
+      print("rawNonce: $rawNonce");
+      print("nonce: $nonce");
       preferences = await SharedPreferences.getInstance();
       var result = await SignInWithApple.getAppleIDCredential(scopes: [
         AppleIDAuthorizationScopes.email,
         AppleIDAuthorizationScopes.fullName,
       ], nonce: nonce);
-      /*
-    print("-------------- Apple Credential authorizationCode: ${result.authorizationCode}");
-    print("-------------- Apple Credential email: ${result.email}");
-    print("-------------- Apple Credential familyName: ${result.familyName}");
-    print("-------------- Apple Credential givenName: ${result.givenName}");
-    print("-------------- Apple Credential identityToken: ${result.identityToken}");
-    print("-------------- Apple Credential userIdentifier: ${result.userIdentifier}");
-     */
+
       final appleCredential = OAuthProvider("apple.com").credential(
           accessToken: result.identityToken,
           rawNonce: rawNonce,
           idToken: result.identityToken);
-      //print("-------------- Apple Credential OAuthProvider: $appleCredential");
+
       final authResult =
           await firebaseAuth.signInWithCredential(appleCredential);
-      //print("-------------- Apple authResult: $authResult");
       User? user = authResult.user;
 
-      //print("-------------- Apple user: $user");
       checkLoginInStatus(user);
     } on Error catch (e) {
-      Fluttertoast.showToast(msg: "Apple sign in request IOS 14+");
+      Fluttertoast.showToast(
+          toastLength: Toast.LENGTH_LONG,
+          msg: "Apple sign in request IOS 14+");
     }
   }
 
+  //Check if user verify account and catch other errors
   Future normalControlSignIn() async {
     preferences = await SharedPreferences.getInstance();
     setState(() {
@@ -362,14 +418,21 @@ class LoginScreenState extends State<LoginScreen> {
               email: email, password: password))
           .user;
 
-      if (user != null) {
+      if (user != null && user.emailVerified) {
         checkLoginInStatus(user);
+        setState(() {
+          showSpin = false;
+          emailFocusNode.unfocus();
+          passwordFocusNode.unfocus();
+        });
+      } else {
+        user!.sendEmailVerification();
+        Fluttertoast.showToast(msg: "Check your email to verify account");
         setState(() {
           showSpin = false;
         });
       }
     } on FirebaseAuthException catch (error) {
-      //print("Error: ${error.code}");
       switch (error.code) {
         case "invalid-email":
           errorMessage = "Email is badly formatted.";
@@ -400,12 +463,13 @@ class LoginScreenState extends State<LoginScreen> {
       showSpin = true;
     });
 
+    /*
     ///Check if user has verify account
-
     if (user != null && !user.emailVerified) {
       Fluttertoast.showToast(msg: "Check your email to verify account");
       await user.sendEmailVerification();
     }
+     */
 
     ///Check if Login Success
     if (user != null) {
@@ -414,7 +478,6 @@ class LoginScreenState extends State<LoginScreen> {
           .where("id", isEqualTo: user.uid)
           .get();
       final List<DocumentSnapshot> documentSnapshots = resultQuery.docs;
-      //print("Test: ${resultQuery.docs}");
 
       ///New User write data to Firebase
       if (documentSnapshots.length == 0) {
@@ -456,6 +519,7 @@ class LoginScreenState extends State<LoginScreen> {
         await preferences.setString("name", currentUser.displayName.toString());
         await preferences.setString(
             "photoUrl", currentUser.photoURL.toString());
+        await preferences.setString("about", "None");
         Fluttertoast.showToast(msg: "Loading");
         Future.delayed(Duration(seconds: 3), () {
           Navigator.push(context, MaterialPageRoute(builder: (context) {
@@ -490,7 +554,9 @@ class LoginScreenState extends State<LoginScreen> {
       });
     } else {
       ///SignIn fail
-      Fluttertoast.showToast(msg: "Fail to sign in. Please try again.");
+      Fluttertoast.showToast(
+          toastLength: Toast.LENGTH_LONG,
+          msg: "Fail to sign in. Please try again.");
       setState(() {
         showSpin = false;
       });

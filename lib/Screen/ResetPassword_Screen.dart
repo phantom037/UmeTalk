@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ume_talk/Models/themeColor.dart';
-import 'login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ume_talk/Models/alert.dart';
 
@@ -20,12 +19,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     var textSize = MediaQuery.of(context).textScaleFactor;
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-            colors: [themeColor, subThemeColor]),
-      ),
+      color: backgroundColor,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
@@ -34,7 +28,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           elevation: 0.0,
         ),
         body: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 30.0),
+          padding: const EdgeInsets.symmetric(horizontal: 25.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -49,7 +43,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       fontStyle: FontStyle.italic),
                 ),
               ),
-              SizedBox(
+              const SizedBox(
                 height: 20.0,
               ),
               TextField(
@@ -58,31 +52,34 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 onChanged: (value) {
                   email = value;
                 },
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Enter your email',
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                  contentPadding: const EdgeInsets.symmetric(
+                      vertical: 10.0, horizontal: 20.0),
+                  border: const OutlineInputBorder(
+                    borderRadius: const BorderRadius.all(Radius.circular(19.0)),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.blueGrey, width: 1.0),
-                    borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                  enabledBorder: const OutlineInputBorder(
+                    borderSide:
+                        const BorderSide(color: Colors.black38, width: 1.0),
+                    borderRadius: const BorderRadius.all(Radius.circular(19.0)),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey, width: 2.0),
-                    borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide:
+                        const BorderSide(color: Colors.black45, width: 2.0),
+                    borderRadius: const BorderRadius.all(Radius.circular(19.0)),
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: Material(
                   elevation: 5.0,
-                  color: Colors.greenAccent,
-                  borderRadius: BorderRadius.circular(30.0),
+                  color: buttonColor,
+                  borderRadius: BorderRadius.circular(19.0),
                   child: MaterialButton(
+                    shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(19.0)),
                     onPressed: () async {
                       setState(() {
                         showSpinner = true;
@@ -90,8 +87,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       try {
                         final user =
                             await _auth.sendPasswordResetEmail(email: email);
+                        setState(() {
+                          errorMessage = "Check your email to reset password.";
+                        });
                       } on FirebaseAuthException catch (error) {
-                        print("Error: ${error.code}");
                         switch (error.code) {
                           case "invalid-email":
                             errorMessage = "Email is badly formatted.";
@@ -113,23 +112,35 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     },
                     minWidth: 200.0,
                     height: 42.0,
-                    child: Text(
+                    child: const Text(
                       'Send Request',
-                      style: TextStyle(color: Colors.black),
+                      style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18.0),
                     ),
                   ),
                 ),
               ),
               showAlert(errorMessage),
-              MaterialButton(
-                child: Text(
-                  'Sign In',
-                  style: TextStyle(fontSize: 14.0),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 120),
+                child: Container(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                      child: const Text(
+                        "Back to sign in",
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                      }),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              )
+              ),
             ],
           ),
         ),

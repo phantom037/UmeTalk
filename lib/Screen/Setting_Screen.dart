@@ -3,19 +3,20 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ume_talk/Models/fcm_notification.dart';
-import 'package:ume_talk/Models/notification.dart';
 import 'package:ume_talk/Models/themeColor.dart';
+import 'package:ume_talk/Screen/Login_Screen.dart';
 import 'package:ume_talk/Widgets/Progress_Widget.dart';
-import 'package:ume_talk/main.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../Models/themeData.dart';
 
 class Setting extends StatelessWidget {
   void initState() {
@@ -25,23 +26,7 @@ class Setting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          backgroundColor: themeColor,
-          iconTheme: IconThemeData(
-            color: Colors.black,
-          ),
-          title: Text(
-            "Setting",
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 30.0,
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: SettingsScreen());
+    return SettingsScreen();
   }
 }
 
@@ -63,67 +48,46 @@ class SettingsScreenState extends State<SettingsScreen> {
   final FocusNode nameFocusNode = FocusNode();
   final FocusNode aboutMeFocusNode = FocusNode();
   final GoogleSignIn googleSignIn = GoogleSignIn();
+  late bool darkMode = false;
 
-  ///FCM Notification
-  /*
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final CollectionReference _tokensDB =
-      FirebaseFirestore.instance.collection('user');
-  final FCMNotificationService _fcmNotificationService =
-      FCMNotificationService();
-  late String deviceToken;
-
-   */
   @override
   void initState() {
     super.initState();
     readDataFromLocal();
-
-    ///Notification
-    //NotificationAPI.init();
-    //listenNotifications();
-    ///FCM Notification
-    //_fcmNotificationService.subscribeToTopic(topic: 'NEWS');
-    //load();
+    getThemeMode();
   }
 
-  ///FCM Notification
-  /*
-  Future<void> load() async {
-    //Request permission from user.
-    if (Platform.isIOS) {
-      _fcm.requestPermission();
-    }
 
-    //Fetch the fcm token for this device.
-    String? token = await _fcm.getToken();
-
-    //Validate that it's not null.
-    assert(token != null);
-
-    //Update fcm token for this device in firebase.
-    DocumentReference docRef = _tokensDB.doc(id);
-    docRef.set({'token': token});
-
-    //Fetch the fcm token for the other device.
-    DocumentSnapshot docSnapshot = await _tokensDB.doc(id).get();
-    deviceToken = docSnapshot['token'];
+  void getThemeMode() async {
+    preference = await SharedPreferences.getInstance();
+    darkMode = preference.getBool('darkMode') ??
+        false; // set a default value of true if it hasn't been set before
   }
-   */
 
-  /*
-  ///Notification
-  void listenNotifications() =>
-      NotificationAPI.onNotification.stream.listen(onClickedNotification);
+  void changeTheme(var userThemeData) async{
+    await userThemeData.updateTheme(!darkMode);
+    preference = await SharedPreferences.getInstance();
+    setState(() {
+      darkMode = preference.getBool('darkMode') ?? false;
+    });
+  }
 
-  void onClickedNotification(String? payload) =>
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (context) => TestScreen(payload: payload),
-      ));
+  ///Unused
+  void setDarkMode() async {
+    setState(() {
+      darkMode = true;
+    });
+    await preference?.setBool('darkMode', true);
+  }
 
-  ///End Notification
+  ///Unused
+  void setLightMode() async {
+    setState(() {
+      darkMode = false;
+    });
+    await preference?.setBool('darkMode', false);
+  }
 
-   */
   void readDataFromLocal() async {
     preference = await SharedPreferences.getInstance();
     id = preference.getString("id").toString();
@@ -150,7 +114,6 @@ class SettingsScreenState extends State<SettingsScreen> {
       if (image != null) {
         setState(() {
           showSpin = true;
-          //profileImage = image as File;
           final imagePicked = File(image.path);
           profileImage = imagePicked;
           uploadImageToFireStore();
@@ -158,7 +121,7 @@ class SettingsScreenState extends State<SettingsScreen> {
         });
       }
     } on PlatformException catch (e) {
-      print("Failed to pick image");
+      Fluttertoast.showToast(msg: "An error occurred!");
     }
   }
 
@@ -168,10 +131,6 @@ class SettingsScreenState extends State<SettingsScreen> {
     for (int i = 0; i < convert.length; i++) {
       arraySearchID[i] = convert.substring(0, i + 1).toString();
     }
-    print("Print from update");
-    for (int i = 0; i < convert.length; i++) {
-      print("Index $i ${arraySearchID[i]}");
-    }
 
     nameFocusNode.unfocus();
     aboutMeFocusNode.unfocus();
@@ -180,7 +139,6 @@ class SettingsScreenState extends State<SettingsScreen> {
       "about": about,
       "name": name,
       "searchID": arraySearchID,
-      //name.toLowerCase().replaceAll(' ', ''),
     }).then((data) async {
       await preference.setString("photoUrl", photoUrl);
       await preference.setString("about", about);
@@ -190,6 +148,29 @@ class SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       showSpin = false;
     });
+  }
+
+  Future deleteUser() async{
+    final QuerySnapshot resultQuery = await FirebaseFirestore.instance
+        .collection("user")
+        .where("id", isEqualTo: id)
+        .get();
+    final List<DocumentSnapshot> documentSnapshots = resultQuery.docs;
+    try {
+      List temp = documentSnapshots[0]['chatWith'];
+      FirebaseFirestore.instance.collection("delete").doc(id).set(
+          {"oldChatList": temp});
+    }on Error catch (e){
+
+    }
+    await FirebaseFirestore.instance.collection("user").doc(id).delete();
+    await Future.delayed(Duration(seconds: 2));
+    deleteFirebaseAuth();
+  }
+
+  Future deleteFirebaseAuth() async{
+    await FirebaseAuth.instance.currentUser?.delete();
+    logoutUser();
   }
 
   Future uploadImageToFireStore() async {
@@ -204,7 +185,6 @@ class SettingsScreenState extends State<SettingsScreen> {
           "photoUrl": photoUrl,
           "about": about,
           "name": name,
-          //"searchID": name.toLowerCase().replaceAll(' ', ''),
         }).then((data) async {
           await preference.setString("photoUrl", photoUrl);
         });
@@ -217,310 +197,519 @@ class SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  void showDeleteAlertDialog(BuildContext context) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoAlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text('Your account will be deleted permanently and could not be restore. \nDo you want to delete your account?'),
+        actions: <CupertinoDialogAction>[
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.pop(context);
+              deleteUser();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future logoutUser() async {
     await FirebaseAuth.instance.signOut();
     await googleSignIn.disconnect();
+
+    ///Todo Delete this line for Android await googleSignIn.signOut();
     await googleSignIn.signOut();
     setState(() {
       showSpin = false;
     });
     Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) {
-      return MyApp();
+      return LoginScreen();
     }), (Route<dynamic> route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      child: SingleChildScrollView(
-        child: Column(
-          children: <Widget>[
-            ///Profile Image
-            Container(
-              child: Center(
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: <Widget>[
-                    (profileImage == null)
-                        ? (photoUrl != "")
-                            ? Material(
-                                //display already existing - old image file
-                                child: CachedNetworkImage(
-                                  placeholder: (context, url) => Container(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.0,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.lightBlueAccent),
+    final userThemeData = Provider.of<UserThemeData>(context);
+    return Scaffold(
+      backgroundColor: darkMode ? Colors.black : backgroundColor,
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              leading: IconButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.arrow_back_ios_new),
+                color: Colors.black,
+                splashRadius: 0.1, // Set a small value to disable the ripple effect
+                highlightColor: Colors.transparent, // Disable the highlight color
+                hoverColor: Colors.transparent, // Disable the hover color
+              ),
+              backgroundColor: themeColor,
+              iconTheme: const IconThemeData(
+                color: Colors.black,
+              ),
+              title: const Text(
+                "Setting",
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 30.0,
+                ),
+              ),
+              centerTitle: true,
+              pinned: true,
+            ),
+          ];
+        },
+        body: Material(
+          child: SingleChildScrollView(
+            child: Column(
+              children: <Widget>[
+                ///Profile Image
+                Container(
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: <Widget>[
+                        (profileImage == null)
+                            ? (photoUrl != "")
+                                ? Material(
+                                    //display already existing - old image file
+                                    child: CachedNetworkImage(
+                                      placeholder: (context, url) => Container(
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2.0,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.lightBlueAccent),
+                                        ),
+                                        width: 200.0,
+                                        height: 200.0,
+                                        padding: const EdgeInsets.all(20.0),
+                                      ),
+                                      imageUrl: photoUrl,
+                                      width: 200.0,
+                                      height: 200.0,
+                                      fit: BoxFit.cover,
                                     ),
-                                    width: 200.0,
-                                    height: 200.0,
-                                    padding: EdgeInsets.all(20.0),
-                                  ),
-                                  imageUrl: photoUrl,
+                                    borderRadius: const BorderRadius.all(
+                                        Radius.circular(125.0)),
+                                    clipBehavior: Clip.hardEdge,
+                                  )
+                                : const Icon(
+                                    Icons.account_circle,
+                                    size: 90.0,
+                                    color: Colors.grey,
+                                  )
+                            : Material(
+                                //display the new updated image here
+                                child: Image.file(
+                                  profileImage!,
                                   width: 200.0,
                                   height: 200.0,
                                   fit: BoxFit.cover,
                                 ),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(125.0)),
+                                borderRadius: const BorderRadius.all(
+                                    Radius.circular(125.0)),
                                 clipBehavior: Clip.hardEdge,
-                              )
-                            : Icon(
-                                Icons.account_circle,
-                                size: 90.0,
-                                color: Colors.grey,
-                              )
-                        : Material(
-                            //display the new updated image here
-                            child: Image.file(
-                              profileImage!,
-                              width: 200.0,
-                              height: 200.0,
-                              fit: BoxFit.cover,
+                              ),
+                        Container(
+                          decoration:
+                              const BoxDecoration(color: Colors.transparent),
+                          width: 50,
+                          height: 50,
+                          child: Align(
+                            alignment: Alignment.bottomRight,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.add_circle_outline,
+                                size: 50.0,
+                                color: darkMode ? Colors.white : Colors.black,
+                              ),
+                              onPressed: () => getImage(ImageSource.gallery),
+                              padding: const EdgeInsets.all(0.0),
+                              //splashColor: Colors.transparent,
+                              //highlightColor: Colors.black54,
+                              //iconSize: 10.0,
                             ),
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(125.0)),
-                            clipBehavior: Clip.hardEdge,
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  //alignment: Alignment.bottomRight,
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(20.0),
+                ),
+                const SizedBox(
+                  height: 20.0,
+                ),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(1.0),
+                      child: showSpin ? circularProgress() : Container(),
+                    ),
                     Container(
-                      decoration: BoxDecoration(color: Colors.transparent),
-                      width: 50,
-                      height: 50,
-                      child: Align(
-                        alignment: Alignment.bottomRight,
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.add_circle_outline,
-                            size: 50.0,
-                            color: Colors.black,
+                      //Display User Name
+                      child: Theme(
+                        data: Theme.of(context)
+                            .copyWith(primaryColor: Colors.black),
+                        child: TextField(
+                          maxLength: 25,
+                          decoration: InputDecoration(
+                              hintText: "Name",
+                              contentPadding: const EdgeInsets.all(3.0),
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              prefixText: "Name: ",
+                              prefixStyle: TextStyle(
+                                  color:
+                                  darkMode ? Colors.white70 : Colors.grey),
+                              suffixText: "Edit",
+                              suffixStyle: TextStyle(
+                                  color:
+                                      darkMode ? Colors.white70 : Colors.grey),
+                              counterText: "",
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: darkMode ? Colors.white60 :Colors.black54),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: darkMode ? Colors.cyan : Colors.blue),
+                              )
                           ),
-                          onPressed: () => getImage(ImageSource.gallery),
-                          padding: EdgeInsets.all(0.0),
-                          //splashColor: Colors.transparent,
-                          //highlightColor: Colors.black54,
-                          //iconSize: 10.0,
+                          controller: nameTextEditingController,
+                          style: TextStyle(color: darkMode ? Colors.white : Colors.black),
+                          onChanged: (value) {
+                            name = value;
+                          },
+                          focusNode: nameFocusNode,
                         ),
                       ),
-                    ),
 
-                    /*
-                      (profileImage == null)
-                          ? (photoUrl != "")
-                              ? Material(
-                                  //Display Exiting Image
-                                  child: CachedNetworkImage(
-                                    imageUrl: photoUrl,
-                                    width: 200.0,
-                                    height: 200.0,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) {
-                                      return Container(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.0,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  Colors.lightGreenAccent),
-                                        ),
-                                        width: 200.0,
-                                        height: 200.0,
-                                        padding: EdgeInsets.all(20.0),
-                                      );
-                                    },
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(125.0)),
-                                  clipBehavior: Clip.hardEdge,
-                                )
-                              : Icon(
-                                  Icons.account_circle,
-                                  size: 90.0,
-                                  color: Colors.grey,
-                                )
-                          : Material(
-                              //Display new Image here
-                              child: Image.file(
-                                profileImage!,
-                                width: 200.0,
-                                height: 200.0,
-                                fit: BoxFit.cover,
+                      margin: const EdgeInsets.only(left: 30.0, right: 30.0),
+                    ),
+                    Container(
+                      //Display About Me
+                      child: Theme(
+                        data: Theme.of(context)
+                            .copyWith(primaryColor: Colors.black),
+                        child: TextField(
+                          maxLength: 25,
+                          decoration: InputDecoration(
+                              hintText: "About Me",
+                              contentPadding: const EdgeInsets.all(3.0),
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              prefixText: "About: ",
+                              prefixStyle: TextStyle(
+                                  color:
+                                  darkMode ? Colors.white70 : Colors.grey),
+                              suffixText: "Edit",
+                              suffixStyle: TextStyle(
+                                  color:
+                                      darkMode ? Colors.white70 : Colors.grey),
+                              counterText: "",
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: darkMode ? Colors.white60 :Colors.black54),
                               ),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(125.0)),
-                              clipBehavior: Clip.hardEdge,
-                            ),
-
-
-                    CircleAvatar(
-                      radius: 30.0,
-                      backgroundImage: NetworkImage(
-                          "https://media.istockphoto.com/vectors/default-profile-picture-avatar-photo-placeholder-vector-illustration-vector-id1214428300?k=20&m=1214428300&s=170667a&w=0&h=NPyJe8rXdOnLZDSSCdLvLWOtIeC9HjbWFIx8wg5nIks="),
-                    ),
-                    Align(
-                      //alignment: Alignment.bottomRight,
-                      child: Container(
-                        width: 100.0,
-                        height: 100.0,
-                        decoration: BoxDecoration(
-                            color: Colors.amber, shape: BoxShape.circle),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.add_circle_outline,
-                            size: 30.0,
-                            color: Colors.white54.withOpacity(0.3),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: darkMode ? Colors.cyan : Colors.blue),
+                              )
                           ),
-                          onPressed: () => getImage(ImageSource.gallery),
-                          padding: EdgeInsets.all(0.0),
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.grey,
-                          iconSize: 30.0,
+                          controller: aboutTextEditingController,
+                          style: TextStyle(color: darkMode ? Colors.white : Colors.black),
+                          onChanged: (value) {
+                            about = value;
+                          },
+                          focusNode: aboutMeFocusNode,
                         ),
+                      ),
+                      margin: const EdgeInsets.only(left: 30.0, right: 30.0),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: subThemeColor,
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30.0),
+                          child: Container(
+                            height: 50,
+                            width: 300,
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Save",
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 18.0, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          onTap: updateData,
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: subThemeColor,
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30.0),
+                          child: Container(
+                            height: 50,
+                            width: 300,
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Log Out",
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 18.0, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          onTap: logoutUser,
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: subThemeColor,
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30.0),
+                          child: Container(
+                            height: 50,
+                            width: 300,
+                            alignment: Alignment.center,
+                            child: Text(
+                              darkMode ? "Light Mode" : "Dark Mode",
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 18.0, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          onTap: () async {
+                        changeTheme(userThemeData);
+                        //await userThemeData.updateTheme(!darkMode);
+                        },
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: subThemeColor,
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30.0),
+                          child: Container(
+                            height: 50,
+                            width: 300,
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Terms & Conditions",
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 18.0, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          onTap: () async {
+                        launch("https://dlmocha.com/app/UmeTalk-privacy");
+                        //await userThemeData.updateTheme(!darkMode);
+                        },
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: subThemeColor,
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30.0),
+                          child: Container(
+                            height: 50,
+                            width: 300,
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Delete Account",
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 18.0, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          onTap: () {
+                            showDeleteAlertDialog(context);
+                            //await userThemeData.updateTheme(!darkMode);
+                          },
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    /*
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Container(
+                        width: 300.0,
+                        child: MaterialButton(
+                          shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(30.0)),
+                          child: const Text(
+                            "Log out",
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 16.0),
+                          ),
+                          textColor: Colors.white,
+                          padding:
+                              const EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
+                          onPressed: logoutUser,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 1.0),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Container(
+                        width: 300.0,
+                        child: MaterialButton(
+                          shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(30.0)),
+                          child: Text(
+                            darkMode ? "Light Mode" : "Dark Mode",
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 16.0),
+                          ),
+                          textColor: Colors.white,
+                          padding:
+                              const EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
+                          onPressed: () async {
+                              changeTheme(userThemeData);
+                              //await userThemeData.updateTheme(!darkMode);
+                          },//darkMode ? setLightMode : setDarkMode,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 1.0),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Container(
+                        width: 300.0,
+                        child: MaterialButton(
+                          shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(30.0)),
+                          child: Text(
+                            "Terms & Conditions",
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 16.0),
+                          ),
+                          textColor: Colors.white,
+                          padding:
+                          const EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
+                          onPressed: () async {
+                            launch("https://dlmocha.com/app/UmeTalk-privacy");
+                            //await userThemeData.updateTheme(!darkMode);
+                          },//darkMode ? setLightMode : setDarkMode,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 1.0),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 30.0,
+                    ),
+                    Material(
+                      color: subThemeColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(30.0)),
+                      elevation: 5.0,
+                      child: Container(
+                        width: 300.0,
+                        child: MaterialButton(
+                          shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(30.0)),
+                          child: const Text(
+                            "Delete Acount",
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 16.0),
+                          ),
+                          textColor: Colors.white,
+                          padding:
+                          const EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
+                          onPressed: () {
+                            //deleteUser();
+                            showDeleteAlertDialog(context);
+                          },
+                        ),
+                        margin: const EdgeInsets.only(bottom: 1.0),
                       ),
                     ),
                     */
                   ],
-                ),
-              ),
-              //alignment: Alignment.bottomRight,
-              width: double.infinity,
-              margin: EdgeInsets.all(20.0),
-            ),
-            /*
-            Container(
-                color: Colors.transparent,
-                height: 30.0,
-                width: 150.0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    IconButton(
-                      icon: Icon(
-                        Icons.camera_alt_outlined,
-                        size: 30.0,
-                        color: Colors.black,
-                      ),
-                      onPressed: () => getImage(ImageSource.camera),
-                      padding: EdgeInsets.all(0.0),
-                      splashColor: Colors.blueGrey,
-                      highlightColor: Colors.grey,
-                      iconSize: 50.0,
-                    ),
-                    SizedBox(
-                      width: 50.0,
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.photo_album_outlined,
-                        size: 30.0,
-                        color: Colors.black,
-                      ),
-                      onPressed: () => getImage(ImageSource.gallery),
-                      padding: EdgeInsets.all(0.0),
-                      splashColor: Colors.blueGrey,
-                      highlightColor: Colors.grey,
-                      iconSize: 50.0,
-                    ),
-                  ],
-                )),
-             */
-            SizedBox(
-              height: 20.0,
-            ),
-            Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(1.0),
-                  child: showSpin ? circularProgress() : Container(),
-                ),
-                Container(
-                  //Display User Name
-                  child: Theme(
-                    data:
-                        Theme.of(context).copyWith(primaryColor: Colors.black),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "Name",
-                        contentPadding: EdgeInsets.all(3.0),
-                        hintStyle: TextStyle(color: Colors.grey),
-                      ),
-                      controller: nameTextEditingController,
-                      onChanged: (value) {
-                        name = value;
-                      },
-                      focusNode: nameFocusNode,
-                    ),
-                  ),
-
-                  margin: EdgeInsets.only(left: 30.0, right: 30.0),
-                ),
-                Container(
-                  //Display About Me
-                  child: Theme(
-                    data:
-                        Theme.of(context).copyWith(primaryColor: Colors.black),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "About Me",
-                        contentPadding: EdgeInsets.all(3.0),
-                        hintStyle: TextStyle(color: Colors.grey),
-                      ),
-                      controller: aboutTextEditingController,
-                      onChanged: (value) {
-                        about = value;
-                      },
-                      focusNode: aboutMeFocusNode,
-                    ),
-                  ),
-                  margin: EdgeInsets.only(left: 30.0, right: 30.0),
-                ),
-                SizedBox(
-                  height: 30.0,
-                ),
-                Material(
-                  color: Colors.greenAccent,
-                  borderRadius: BorderRadius.all(Radius.circular(30.0)),
-                  elevation: 5.0,
-                  child: Container(
-                    width: 300.0,
-                    child: MaterialButton(
-                      child: Text(
-                        "Update",
-                        style: TextStyle(color: Colors.black, fontSize: 16.0),
-                      ),
-                      textColor: Colors.white,
-                      padding: EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
-                      onPressed: updateData,
-                    ),
-                    margin: EdgeInsets.only(bottom: 1.0),
-                  ),
-                ),
-                SizedBox(
-                  height: 30.0,
-                ),
-                Material(
-                  color: Colors.redAccent,
-                  borderRadius: BorderRadius.all(Radius.circular(30.0)),
-                  elevation: 5.0,
-                  child: Container(
-                    width: 300.0,
-                    child: MaterialButton(
-                      child: Text(
-                        "Log out",
-                        style: TextStyle(color: Colors.black, fontSize: 16.0),
-                      ),
-                      textColor: Colors.white,
-                      padding: EdgeInsets.fromLTRB(30.0, 10.0, 30.0, 10.0),
-                      onPressed: logoutUser,
-                    ),
-                    margin: EdgeInsets.only(bottom: 1.0),
-                  ),
+                  crossAxisAlignment: CrossAxisAlignment.center,
                 ),
               ],
-              crossAxisAlignment: CrossAxisAlignment.center,
-            ),
-          ],
-        ), //Column
-        padding: EdgeInsets.only(left: 15.0, right: 15.0),
+            ), //Column
+
+            padding: const EdgeInsets.only(left: 15.0, right: 15.0),
+          ),
+          color: darkMode ? Colors.black : backgroundColor,
+        ),
       ),
     );
   }
